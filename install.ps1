@@ -7,27 +7,27 @@ Function Log($Content) { Write-Host -f Green $content; ac $ENV:WINDIR\AppInstall
 trap { Log "ERROR: $($_.Exception.Message)"; continue }
 Log "Installation started"
 
-Log "Aanmaken share"
+Log "Creating share"
 $dst = 'D:\Inventory'
 $null = md $dst -EA 0
 
-Log "Kopieren bestanden"
+Log "Copying files"
 $copyList = @('Inventory.ps1', 'index.html', 'view-Inventory.ps1')
 foreach ($f in $copyList) { cp "$PSScriptRoot\$f" $dst -Force -EA 0 }
 
-Log "Share permissions instellen"
+Log "Setting share permissions"
 $dom = (Get-CimInstance Win32_ComputerSystem -EA 0).Domain
 if ($dom -and $dom -ne $env:COMPUTERNAME) { $admins = "$dom\Administrators"; $dc = "$dom\Domain Computers" } else { $admins = 'BUILTIN\Administrators'; $dc = 'Domain Computers' }
 
 $null = New-SmbShare -Name 'Inventory$' -Path $dst -Description 'Inventory share' -FullAccess 'BUILTIN\Administrators' -Change $dc -EA 0
 
-Log "NTFS permissions instellen (icacls)"
+Log "Setting NTFS permissions (icacls)"
 $null = icacls $dst /grant "$($ENV:USERNAME):(OI)(CI)F" /C
 $null = icacls $dst /grant "BUILTIN\Administrators:(OI)(CI)F" /C
 $null = icacls $dst /grant "$($dc):(OI)(CI)M" /C
 $null = icacls $dst /inheritance:r /C
 
-Log "Share klaar: $dst (Inventory$). Kopieer voltooid. Zet GPO startup script naar \\$env:COMPUTERNAME\Inventory$\Inventory.ps1"
+Log "Share ready: $dst (Inventory$). Copy complete. Set GPO startup script to \\\$env:COMPUTERNAME\Inventory$\Inventory.ps1"
 
 Log "Finished installation"
 exit 0

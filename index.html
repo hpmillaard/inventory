@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nl">
+<html>
 
 <head>
     <meta charset="utf-8" />
@@ -74,17 +74,69 @@
 </head>
 
 <body>
-    <h2>Software Inventory</h2>
+    <h2 id="title"></h2>
     <div id="status" style="margin-bottom:8px;color:#333;display:inline-block"></div>
     <div id="notice" style="margin-top:8px;color:crimson"></div>
     <script>
+        const translations = {
+            en: {
+                title: 'Software Inventory',
+                loading: 'Loading...',
+                couldNotLoadMerged: 'Could not load inventory_merged.js.',
+                noMergedData: 'No merged data found. Run <code>view-Inventory.ps1</code> on the file server to build <code>inventory_merged.js</code>, then refresh this page.',
+                lastInventory: 'Last inventory:',
+                disk: 'Disk',
+                size: 'Size',
+                free: 'Free',
+                percent: '%',
+                lastBoot: 'Last boot:',
+                memory: 'Memory:',
+                pendingReboot: 'Pending reboot',
+                definitions: 'Definitions:',
+                defsUpdated: 'Defs updated:',
+                lastScan: 'Last scan:',
+                upToDate: 'Up-to-date',
+                outdated: 'Outdated',
+                computersCount: 'Computers: {count}'
+            },
+            nl: {
+                title: 'Software-inventaris',
+                loading: 'Laden...',
+                couldNotLoadMerged: 'Kon inventory_merged.js niet laden.',
+                noMergedData: 'Geen samengevoegde data gevonden. Draai <code>view-Inventory.ps1</code> op de fileserver om <code>inventory_merged.js</code> te maken, vernieuw de pagina daarna.',
+                lastInventory: 'Laatste inventarisatie:',
+                disk: 'Schijf',
+                size: 'Grootte',
+                free: 'Vrij',
+                percent: '%',
+                lastBoot: 'Laatste opstart:',
+                memory: 'Geheugen:',
+                pendingReboot: 'Wachten op herstart',
+                definitions: 'Definities:',
+                defsUpdated: 'Defs bijgewerkt:',
+                lastScan: 'Laatste scan:',
+                upToDate: 'Bijgewerkt',
+                outdated: 'Verouderd',
+                computersCount: 'Aantal computers: {count}'
+            }
+        };
+
+        function detectLang() {
+            const nav = navigator.language || navigator.userLanguage || 'en';
+            return nav.toLowerCase().startsWith('nl') ? 'nl' : 'en';
+        }
+        const LANG = detectLang();
+        function t(k) { return (translations[LANG] && translations[LANG][k]) ? translations[LANG][k] : k }
+        function tf(k, vars) { let s = t(k); if (!vars) return s; Object.keys(vars).forEach(x => { s = s.replace('{' + x + '}', vars[x]) }); return s }
+        document.documentElement.lang = LANG;
+        document.getElementById('title').textContent = t('title');
         function loadInventoryScript(cb) {
             // remove any previously injected inventory script
             document.querySelectorAll('script').forEach(s => { try { if (s.src && s.src.indexOf('inventory_merged.js') !== -1) s.remove(); } catch (e) { } });
             const s = document.createElement('script');
             s.src = 'inventory_merged.js?t=' + Date.now();
             s.onload = cb;
-            s.onerror = function () { const st = document.getElementById('status'); if (st) st.textContent = 'Kon inventory_merged.js niet laden.'; const n = document.getElementById('notice'); if (n) n.textContent = 'Kon inventory_merged.js niet laden.' };
+            s.onerror = function () { const st = document.getElementById('status'); if (st) st.textContent = t('couldNotLoadMerged'); const n = document.getElementById('notice'); if (n) n.textContent = t('couldNotLoadMerged') };
             document.head.appendChild(s);
         }
 
@@ -130,7 +182,7 @@
                     }
                     return []
                 }
-                const n = document.getElementById('notice'); if (n) n.innerHTML = 'Geen samengevoegde data gevonden. Draai <code>view-Inventory.ps1</code> op de fileserver om <code>inventory_merged.js</code> te maken, vernieuw de pagina daarna.';
+                const n = document.getElementById('notice'); if (n) n.innerHTML = t('noMergedData');
                 return [];
             }
 
@@ -183,13 +235,13 @@
                             }
                             return `<tr><td>${d.Device || ''}</td><td>${sizeTxt}</td><td>${freeTxt}</td><td><span style="${spanStyle}">${pctVal !== null ? pctVal : ''}</span></td></tr>`;
                         }).join('');
-                        const diskTable = `<table class="subtable"><tr><th style="font-weight:600;border-bottom:1px solid #ddd;padding-bottom:4px;text-align:left">Schijf</th><th style="font-weight:600;border-bottom:1px solid #ddd;padding-bottom:4px">Grootte</th><th style="font-weight:600;border-bottom:1px solid #ddd;padding-bottom:4px">Vrij</th><th style="font-weight:600;border-bottom:1px solid #ddd;padding-bottom:4px">%</th></tr>${diskLines}</table>`;
+                        const diskTable = `<table class="subtable"><tr><th style="font-weight:600;border-bottom:1px solid #ddd;padding-bottom:4px;text-align:left">${t('disk')}</th><th style="font-weight:600;border-bottom:1px solid #ddd;padding-bottom:4px">${t('size')}</th><th style="font-weight:600;border-bottom:1px solid #ddd;padding-bottom:4px">${t('free')}</th><th style="font-weight:600;border-bottom:1px solid #ddd;padding-bottom:4px">${t('percent')}</th></tr>${diskLines}</table>`;
                         const softwareRows = (item.InstalledSoftware || []).map(s => `<tr><td>${s.Name || ''}</td><td style="width:1%">${s.Version || ''}</td></tr>`).join('');
                         const softwareTable = `<table class="subtable">${softwareRows}</table>`;
                         const av = item.AV || {};
                         const avDef = av.DefinitionVersion || av.Definition || av.Definitions || '';
                         const avLastScan = av.LastScanTime || item.LastScanTime || av.LastFullScanTime || '';
-                        tr.innerHTML = `<td style="vertical-align:top"><div style="font-weight:600">${item.ComputerName || ''}</div><div style="font-size:smaller;color:#666;margin-top:4px">Last inventory: ${item.Timestamp ? formatDateMinute(item.Timestamp) : ''}</div></td><td style="vertical-align:top"><div style="font-weight:600">${item.HWModel ? (item.HWModel) : ''}</div><div style="font-size:smaller;color:#333;margin-top:4px">SN: ${item.SerialNumber || ''}</div><div style="font-size:smaller;color:#333;margin-top:4px">${item.CPU ? (`cores: ${item.CPU.TotalCores || item.CPU.PhysicalCount || ''} / logical: ${item.CPU.TotalLogicalProcessors || ''}`) : ''}</div><div style="font-size:smaller;color:#333;margin-top:3px">${item.CPU && item.CPU.Model ? item.CPU.Model : ''}</div><div style="font-size:smaller;color:#333;margin-top:4px">Memory: ${item.MemoryGB !== undefined && item.MemoryGB !== null ? (item.MemoryGB + ' GB') : ''}</div>${diskTable}</td><td style="vertical-align:top"><div style="font-weight:600">${item.OSCaption ? item.OSCaption : ''}${item.BuildNumber ? (' (Build ' + item.BuildNumber + (item.UBR ? ('.' + item.UBR) : '') + ')') : ''}</div><div style="font-size:smaller;color:#333;margin-top:4px">Last boot: ${formatDate(item.LastBootUpTime)}</div><div style="margin-top:4px">${item.PendingReboot ? '<span style="color:#c00;font-weight:600">Pending reboot</span>' : ''}</div><div style="font-size:smaller;color:#333;margin-top:6px">${item.LastLoggedOnUser || ''}</div><div style="font-size:smaller;color:#333;margin-top:3px">${av.Product ? ('<div style="font-weight:600">' + av.Product + '</div>') : ''}${avDef ? ('<div>Definitions: ' + avDef + '</div>') : ''}${av.LastDefinitionUpdate ? ('<div>Defs updated: ' + formatDate(av.LastDefinitionUpdate) + '</div>') : ''}${avLastScan ? ('<div>Last scan: ' + formatDate(avLastScan) + '</div>') : ''}${av.UpToDate === true ? '<div style="color:green;font-weight:600">Up-to-date</div>' : av.UpToDate === false ? '<div style="color:#c00;font-weight:600">Outdated</div>' : ''}</div></td><td style="vertical-align:top">${(item.IPAddresses || []).join('<br>')}</td><td style="vertical-align:top">${softwareTable}</td>`;
+                        tr.innerHTML = `<td style="vertical-align:top"><div style="font-weight:600">${item.ComputerName || ''}</div><div style="font-size:smaller;color:#666;margin-top:4px">${t('lastInventory')} ${item.Timestamp ? formatDateMinute(item.Timestamp) : ''}</div></td><td style="vertical-align:top"><div style="font-weight:600">${item.HWModel ? (item.HWModel) : ''}</div><div style="font-size:smaller;color:#333;margin-top:4px">SN: ${item.SerialNumber || ''}</div><div style="font-size:smaller;color:#333;margin-top:4px">${item.CPU ? (`cores: ${item.CPU.TotalCores || item.CPU.PhysicalCount || ''} / logical: ${item.CPU.TotalLogicalProcessors || ''}`) : ''}</div><div style="font-size:smaller;color:#333;margin-top:3px">${item.CPU && item.CPU.Model ? item.CPU.Model : ''}</div><div style="font-size:smaller;color:#333;margin-top:4px">${t('memory')} ${item.MemoryGB !== undefined && item.MemoryGB !== null ? (item.MemoryGB + ' GB') : ''}</div>${diskTable}</td><td style="vertical-align:top"><div style="font-weight:600">${item.OSCaption ? item.OSCaption : ''}${item.BuildNumber ? (' (Build ' + item.BuildNumber + (item.UBR ? ('.' + item.UBR) : '') + ')') : ''}</div><div style="font-size:smaller;color:#333;margin-top:4px">${t('lastBoot')} ${formatDate(item.LastBootUpTime)}</div><div style="margin-top:4px">${item.PendingReboot ? ('<span style="color:#c00;font-weight:600">' + t('pendingReboot') + '</span>') : ''}</div><div style="font-size:smaller;color:#333;margin-top:6px">${item.LastLoggedOnUser || ''}</div><div style="font-size:smaller;color:#333;margin-top:3px">${av.Product ? ('<div style="font-weight:600">' + av.Product + '</div>') : ''}${avDef ? ('<div>' + t('definitions') + ' ' + avDef + '</div>') : ''}${av.LastDefinitionUpdate ? ('<div>' + t('defsUpdated') + ' ' + formatDate(av.LastDefinitionUpdate) + '</div>') : ''}${avLastScan ? ('<div>' + t('lastScan') + ' ' + formatDate(avLastScan) + '</div>') : ''}${av.UpToDate === true ? ('<div style="color:green;font-weight:600">' + t('upToDate') + '</div>') : av.UpToDate === false ? ('<div style="color:#c00;font-weight:600">' + t('outdated') + '</div>') : ''}</div></td><td style="vertical-align:top">${(item.IPAddresses || []).join('<br>')}</td><td style="vertical-align:top">${softwareTable}</td>`;
                         tbody.appendChild(tr);
                         appended++;
                     } catch (e) {
@@ -198,9 +250,9 @@
                 }
                 const st = document.getElementById('status');
                 const n = document.getElementById('notice'); if (n) n.innerHTML = '';
-                if (st) st.textContent = `Aantal computers: ${data.length}`;
+                if (st) st.textContent = tf('computersCount', { count: data.length });
                 if (appended === 0) {
-                    if (st) st.textContent = `Aantal computers: ${data.length} — geen rijen gerenderd (zie console)`;
+                    if (st) st.textContent = tf('computersCount', { count: data.length }) + ' — no rows rendered (see console)';
                 }
             }
 
@@ -268,21 +320,30 @@
             renderTable(viewData);
         }
 
-        const stInit = document.getElementById('status'); if (stInit) stInit.textContent = 'Laden...';
+        const stInit = document.getElementById('status'); if (stInit) stInit.textContent = t('loading');
         loadInventoryScript(runInventory);
     </script>
     <table id="tbl">
         <thead>
             <tr>
-                <th data-key="ComputerName">Computer</th>
-                <th data-key="HWModel">Hardware</th>
-                <th data-key="Build">Operating System</th>
-                <th data-key="IPAddresses">IP(s)</th>
-                <th>Software</th>
+                <th data-key="ComputerName" id="th-computer"></th>
+                <th data-key="HWModel" id="th-hardware"></th>
+                <th data-key="Build" id="th-os"></th>
+                <th data-key="IPAddresses" id="th-ips"></th>
+                <th id="th-software"></th>
             </tr>
         </thead>
         <tbody></tbody>
     </table>
+
+    <script>
+        // set header texts (separate script block so elements exist)
+        document.getElementById('th-computer').textContent = LANG === 'nl' ? 'Computer' : 'Computer';
+        document.getElementById('th-hardware').textContent = LANG === 'nl' ? 'Hardware' : 'Hardware';
+        document.getElementById('th-os').textContent = LANG === 'nl' ? 'Besturingssysteem' : 'Operating System';
+        document.getElementById('th-ips').textContent = 'IP(s)';
+        document.getElementById('th-software').textContent = LANG === 'nl' ? 'Software' : 'Software';
+    </script>
 
 </body>
 
